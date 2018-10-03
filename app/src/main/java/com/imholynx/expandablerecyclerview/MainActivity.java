@@ -1,11 +1,16 @@
 package com.imholynx.expandablerecyclerview;
 
+import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.annotation.RequiresApi;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.widget.CardView;
+import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.transition.TransitionManager;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.support.design.widget.NavigationView;
@@ -22,12 +27,17 @@ import android.widget.TextView;
 import com.imholynx.expandablerecyclerview.data.Question;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
 
     List<Question> faq = new ArrayList<>();
+    RecyclerView rv;
+    RVAdapter adapter;
+    RecyclerView.LayoutManager layoutManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,19 +64,25 @@ public class MainActivity extends AppCompatActivity
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
 
-        initializedFaqList();
+        initializeFaqList();
 
-        RecyclerView rv = findViewById(R.id.rv);
-        RVAdapter adapter = new RVAdapter(faq);
+        rv = findViewById(R.id.rv);
+        rv.setHasFixedSize(true);
+        layoutManager = new LinearLayoutManager(this);
+        rv.setLayoutManager(layoutManager);
+        adapter = new RVAdapter(faq);
         rv.setAdapter(adapter);
     }
 
-    public class RVAdapter extends RecyclerView.Adapter<RVAdapter.QuestionViewHolder>{
+    public class RVAdapter extends RecyclerView.Adapter<RVAdapter.QuestionViewHolder> {
 
         List<Question> faq;
+        List<Boolean> expanded;
 
         public RVAdapter(List<Question> faq) {
             this.faq = faq;
+            expanded = new ArrayList<>(Arrays.asList(new Boolean[faq.size()]));
+            Collections.fill(expanded,Boolean.FALSE);
         }
 
         @NonNull
@@ -78,9 +94,22 @@ public class MainActivity extends AppCompatActivity
         }
 
         @Override
-        public void onBindViewHolder(@NonNull RVAdapter.QuestionViewHolder questionViewHolder, int i) {
+        public void onBindViewHolder(@NonNull RVAdapter.QuestionViewHolder questionViewHolder, final int i) {
             questionViewHolder.question.setText(faq.get(i).getQuestion());
             questionViewHolder.answer.setText(faq.get(i).getAnswer());
+            final boolean isExpanded = expanded.get(i);
+            questionViewHolder.answer.setVisibility(isExpanded ? View.VISIBLE : View.GONE);
+            questionViewHolder.itemView.setActivated(isExpanded);
+            questionViewHolder.itemView.setOnClickListener(new View.OnClickListener() {
+                @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+                @Override
+                public void onClick(View view) {
+                    expanded.set(i, !isExpanded);
+                    Log.e("i",""+i);
+                    TransitionManager.beginDelayedTransition(rv);
+                    notifyItemChanged(i);
+                }
+            });
         }
 
         @Override
@@ -88,31 +117,23 @@ public class MainActivity extends AppCompatActivity
             return faq.size();
         }
 
-        @Override
-        public void onAttachedToRecyclerView(@NonNull RecyclerView recyclerView) {
-            super.onAttachedToRecyclerView(recyclerView);
-        }
-
         public class QuestionViewHolder extends RecyclerView.ViewHolder {
             CardView cardView;
             TextView question;
             TextView answer;
-            QuestionViewHolder(View itemView){
-                super(itemView);
-                cardView = findViewById(R.id.cv);
-                question = findViewById(R.id.question);
-                answer = findViewById(R.id.answer);
 
+            QuestionViewHolder(View itemView) {
+                super(itemView);
+                cardView = itemView.findViewById(R.id.cv);
+                question = itemView.findViewById(R.id.question);
+                answer = itemView.findViewById(R.id.answer);
             }
         }
     }
 
-    private void initializedFaqList(){
-        faq.add(new Question("Вопрос1?", "Ответ1"));
-        faq.add(new Question("Вопрос2?", "Ответ2"));
-        faq.add(new Question("Вопрос3?", "Ответ3"));
-        faq.add(new Question("Вопрос4?", "Ответ4"));
-        faq.add(new Question("Вопрос5?", "Ответ5"));
+    private void initializeFaqList() {
+        for (int i = 0; i < 25; i++)
+            faq.add(new Question("Вопрос" + i + "?", "Ответ" + i));
     }
 
     @Override
